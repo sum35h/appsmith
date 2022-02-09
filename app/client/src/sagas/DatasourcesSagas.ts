@@ -617,11 +617,6 @@ function* createTempDatasourceFromFormSaga(
     },
   };
 
-  // yield put({
-  //   type: ReduxActionTypes.UPDATE_DATASOURCE_REFS,
-  //   payload,
-  // });
-
   yield put({
     type: ReduxActionTypes.CREATE_DATASOURCE_SUCCESS,
     payload,
@@ -666,10 +661,10 @@ function* createDatasourceFromFormSaga(
 
     const isValidResponse = yield validateResponse(response);
     if (isValidResponse) {
-      // yield put({
-      //   type: ReduxActionTypes.UPDATE_DATASOURCE_REFS,
-      //   payload: response.data,
-      // });
+      yield put({
+        type: ReduxActionTypes.UPDATE_DATASOURCE_REFS,
+        payload: response.data,
+      });
       yield put({
         type: ReduxActionTypes.CREATE_DATASOURCE_SUCCESS,
         payload: response.data,
