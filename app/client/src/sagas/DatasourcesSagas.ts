@@ -653,7 +653,6 @@ function* createDatasourceFromFormSaga(
 
     const payload = _.omit(merge(initialValues, actionPayload.payload), [
       "id",
-      "name",
       "new",
       "type",
     ]);
