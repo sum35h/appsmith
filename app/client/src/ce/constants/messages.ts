@@ -565,6 +565,7 @@ export const REMOTE_URL_VIA = () => "Remote URL via";
 
 export const USER_PROFILE_SETTINGS_TITLE = () => "User settings";
 
+export const USE_DEFAULT_CONFIGURATION = () => "Use default configuration";
 export const AUTHOR_NAME = () => "Author name";
 export const AUTHOR_NAME_CANNOT_BE_EMPTY = () => "Author name cannot be empty";
 export const AUTHOR_EMAIL = () => "Author email";
