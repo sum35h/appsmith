@@ -1,10 +1,10 @@
 import React, { Component } from "react";
 import { Helmet } from "react-helmet";
 import { connect } from "react-redux";
-import { RouteComponentProps, withRouter } from "react-router-dom";
-import { Spinner } from "@blueprintjs/core";
-import { BuilderRouteParams } from "constants/routes";
-import { AppState } from "@appsmith/reducers";
+import type { RouteComponentProps } from "react-router-dom";
+import { withRouter } from "react-router-dom";
+import type { BuilderRouteParams } from "constants/routes";
+import type { AppState } from "@appsmith/reducers";
 import MainContainer from "./MainContainer";
 import {
   getCurrentApplicationId,
@@ -13,20 +13,16 @@ import {
   getIsPublishingApplication,
   getPublishingError,
 } from "selectors/editorSelectors";
-import {
-  initEditor,
-  InitializeEditorPayload,
-  resetEditorRequest,
-} from "actions/initActions";
-import { editorInitializer } from "utils/editor/EditorUtils";
+import type { InitializeEditorPayload } from "actions/initActions";
+import { initEditor, resetEditorRequest } from "actions/initActions";
 import CenteredWrapper from "components/designSystems/appsmith/CenteredWrapper";
 import { getCurrentUser } from "selectors/usersSelectors";
-import { User } from "constants/userConstants";
+import type { User } from "constants/userConstants";
 import RequestConfirmationModal from "pages/Editor/RequestConfirmationModal";
 import * as Sentry from "@sentry/react";
 import { getTheme, ThemeMode } from "selectors/themeSelectors";
 import { ThemeProvider } from "styled-components";
-import { Theme } from "constants/DefaultTheme";
+import type { Theme } from "constants/DefaultTheme";
 import GlobalHotKeys from "./GlobalHotKeys";
 import GitSyncModal from "pages/Editor/gitSync/GitSyncModal";
 import DisconnectGitModal from "pages/Editor/gitSync/DisconnectGitModal";
@@ -42,8 +38,10 @@ import { APP_MODE } from "entities/App";
 import { GIT_BRANCH_QUERY_KEY } from "constants/routes";
 import TemplatesModal from "pages/Templates/TemplatesModal";
 import ReconnectDatasourceModal from "./gitSync/ReconnectDatasourceModal";
-import MultiPaneContainer from "pages/Editor/MultiPaneContainer";
-import { isMultiPaneActive } from "selectors/multiPaneSelectors";
+import { Spinner } from "design-system";
+import SignpostingOverlay from "pages/Editor/FirstTimeUserOnboarding/Overlay";
+import { editorInitializer } from "../../utils/editor/EditorUtils";
+import { widgetInitialisationSuccess } from "../../actions/widgetActions";
 
 type EditorProps = {
   currentApplicationId?: string;
@@ -64,36 +62,18 @@ type EditorProps = {
   currentPageId?: string;
   pageLevelSocketRoomId: string;
   isMultiPane: boolean;
+  widgetConfigBuildSuccess: () => void;
 };
 
 type Props = EditorProps & RouteComponentProps<BuilderRouteParams>;
 
 class Editor extends Component<Props> {
-  public state = {
-    registered: false,
-  };
-
   componentDidMount() {
     editorInitializer().then(() => {
-      this.setState({ registered: true });
+      this.props.widgetConfigBuildSuccess();
     });
-
-    const {
-      location: { search },
-    } = this.props;
-    const branch = getSearchQuery(search, GIT_BRANCH_QUERY_KEY);
-
-    const { applicationId, pageId } = this.props.match.params;
-    if (pageId)
-      this.props.initEditor({
-        applicationId,
-        pageId,
-        branch,
-        mode: APP_MODE.EDIT,
-      });
   }
-
-  shouldComponentUpdate(nextProps: Props, nextState: { registered: boolean }) {
+  shouldComponentUpdate(nextProps: Props) {
     const isBranchUpdated = getIsBranchUpdated(
       this.props.location,
       nextProps.location,
@@ -110,8 +90,7 @@ class Editor extends Component<Props> {
       nextProps.errorPublishing !== this.props.errorPublishing ||
       nextProps.isEditorInitializeError !==
         this.props.isEditorInitializeError ||
-      nextProps.loadingGuidedTour !== this.props.loadingGuidedTour ||
-      nextState.registered !== this.state.registered
+      nextProps.loadingGuidedTour !== this.props.loadingGuidedTour
     );
   }
 
@@ -160,16 +139,12 @@ class Editor extends Component<Props> {
   }
 
   public render() {
-    if (
-      !this.props.isEditorInitialized ||
-      !this.state.registered ||
-      this.props.loadingGuidedTour
-    ) {
+    if (!this.props.isEditorInitialized || this.props.loadingGuidedTour) {
       return (
         <CenteredWrapper
           style={{ height: `calc(100vh - ${theme.smallHeaderHeight})` }}
         >
-          <Spinner />
+          <Spinner size="lg" />
         </CenteredWrapper>
       );
     }
@@ -183,11 +158,7 @@ class Editor extends Component<Props> {
             </title>
           </Helmet>
           <GlobalHotKeys>
-            {this.props.isMultiPane ? (
-              <MultiPaneContainer />
-            ) : (
-              <MainContainer />
-            )}
+            <MainContainer />
             <GitSyncModal />
             <DisconnectGitModal />
             <GuidedTourModal />
@@ -195,6 +166,7 @@ class Editor extends Component<Props> {
             <TemplatesModal />
             <ImportedApplicationSuccessModal />
             <ReconnectDatasourceModal />
+            <SignpostingOverlay />
           </GlobalHotKeys>
         </div>
         <RequestConfirmationModal />
@@ -215,7 +187,6 @@ const mapStateToProps = (state: AppState) => ({
   currentApplicationName: state.ui.applications.currentApplication?.name,
   currentPageId: getCurrentPageId(state),
   loadingGuidedTour: loading(state),
-  isMultiPane: isMultiPaneActive(state),
 });
 
 const mapDispatchToProps = (dispatch: any) => {
@@ -225,6 +196,7 @@ const mapDispatchToProps = (dispatch: any) => {
     resetEditorRequest: () => dispatch(resetEditorRequest()),
     fetchPage: (pageId: string) => dispatch(fetchPage(pageId)),
     updateCurrentPage: (pageId: string) => dispatch(updateCurrentPage(pageId)),
+    widgetConfigBuildSuccess: () => dispatch(widgetInitialisationSuccess()),
   };
 };
 

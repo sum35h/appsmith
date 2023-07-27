@@ -1,13 +1,15 @@
 import _ from "lodash";
 import { createReducer } from "utils/ReducerUtils";
+import type { ReduxAction } from "@appsmith/constants/ReduxActionConstants";
 import {
-  ReduxAction,
   ReduxActionTypes,
   ReduxActionErrorTypes,
 } from "@appsmith/constants/ReduxActionConstants";
 
-import { DefaultCurrentUserDetails, User } from "constants/userConstants";
-import FeatureFlags from "entities/FeatureFlags";
+import type { User } from "constants/userConstants";
+import { DefaultCurrentUserDetails } from "constants/userConstants";
+import type { FeatureFlags } from "@appsmith/entities/FeatureFlag";
+import { DEFAULT_FEATURE_FLAG_VALUE } from "@appsmith/entities/FeatureFlag";
 
 const initialState: UsersReduxState = {
   loadingStates: {
@@ -20,8 +22,14 @@ const initialState: UsersReduxState = {
   current: undefined,
   currentUser: undefined,
   featureFlag: {
-    data: {},
+    data: DEFAULT_FEATURE_FLAG_VALUE,
     isFetched: false,
+  },
+  productAlert: {
+    config: {
+      dismissed: false,
+      snoozeTill: new Date(),
+    },
   },
 };
 
@@ -87,6 +95,15 @@ const usersReducer = createReducer(initialState, {
       currentUser: {
         ...state.currentUser,
         ...action.payload,
+      },
+    };
+  },
+  [ReduxActionTypes.UPDATE_USER_INTERCOM_CONSENT]: (state: UsersReduxState) => {
+    return {
+      ...state,
+      currentUser: {
+        ...state.currentUser,
+        isIntercomConsentGiven: true,
       },
     };
   },
@@ -175,6 +192,23 @@ const usersReducer = createReducer(initialState, {
       isFetched: true,
     },
   }),
+  [ReduxActionTypes.FETCH_PRODUCT_ALERT_SUCCESS]: (
+    state: UsersReduxState,
+    action: ReduxAction<ProductAlert>,
+  ) => ({
+    ...state,
+    productAlert: action.payload,
+  }),
+  [ReduxActionTypes.UPDATE_PRODUCT_ALERT_CONFIG]: (
+    state: UsersReduxState,
+    action: ReduxAction<ProductAlertConfig>,
+  ): UsersReduxState => ({
+    ...state,
+    productAlert: {
+      ...state.productAlert,
+      config: action.payload,
+    },
+  }),
 });
 
 export interface PropertyPanePositionConfig {
@@ -184,6 +218,26 @@ export interface PropertyPanePositionConfig {
     top: number;
   };
 }
+
+export interface ProductAlert {
+  messageId: string;
+  title: string;
+  message: string;
+  canDismiss: boolean;
+  remindLaterDays: number;
+  learnMoreLink?: string;
+}
+
+export interface ProductAlertConfig {
+  dismissed: boolean;
+  snoozeTill: Date;
+}
+
+export interface ProductAlertState {
+  message?: ProductAlert;
+  config: ProductAlertConfig;
+}
+
 export interface UsersReduxState {
   current?: User;
   list: User[];
@@ -199,6 +253,7 @@ export interface UsersReduxState {
     isFetched: boolean;
     data: FeatureFlags;
   };
+  productAlert: ProductAlertState;
 }
 
 export default usersReducer;

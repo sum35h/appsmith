@@ -1,8 +1,14 @@
-import { LogLevelDesc } from "loglevel";
+import type { LogLevelDesc } from "loglevel";
 
 export type SentryConfig = {
   dsn: string;
   environment: string;
+};
+
+export type AppVersionData = {
+  id: string;
+  releaseDate: string;
+  edition: string;
 };
 
 export interface AppsmithUIConfigs {
@@ -37,21 +43,13 @@ export interface AppsmithUIConfigs {
   };
 
   enableRapidAPI: boolean;
-  enableGoogleOAuth: boolean;
-  enableGithubOAuth: boolean;
-  disableLoginForm: boolean;
-  disableSignup: boolean;
   enableMixpanel: boolean;
   enableTNCPP: boolean;
 
   cloudHosting: boolean;
 
   logLevel: LogLevelDesc;
-  appVersion: {
-    id: string;
-    releaseDate: string;
-    edition: string;
-  };
+  appVersion: AppVersionData;
   intercomAppID: string;
   mailEnabled: boolean;
 

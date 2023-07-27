@@ -1,15 +1,19 @@
-import { WidgetType } from "constants/WidgetConstants";
+import type { WidgetType } from "constants/WidgetConstants";
 import React from "react";
-import BaseWidget, { WidgetProps, WidgetState } from "widgets/BaseWidget";
+import type { WidgetProps, WidgetState } from "widgets/BaseWidget";
+import BaseWidget from "widgets/BaseWidget";
 import RateComponent from "../component";
-import { RateSize } from "../constants";
+import type { RateSize } from "../constants";
 
 import { EventType } from "constants/AppsmithActionConstants/ActionConstants";
 import { ValidationTypes } from "constants/WidgetValidation";
-import { Stylesheet } from "entities/AppTheming";
-import { AutocompleteDataType } from "utils/autocomplete/CodemirrorTernService";
-import { getResponsiveLayoutConfig } from "utils/layoutPropertiesUtils";
-import { DerivedPropertiesMap } from "utils/WidgetFactory";
+
+import type { SetterConfig, Stylesheet } from "entities/AppTheming";
+import { AutocompleteDataType } from "utils/autocomplete/AutocompleteDataType";
+import type { DerivedPropertiesMap } from "utils/WidgetFactory";
+import { DefaultAutocompleteDefinitions } from "widgets/WidgetUtils";
+import type { AutocompletionDefinitions } from "widgets/constants";
+import { isAutoLayout } from "utils/autoLayout/flexWidgetUtils";
 
 function validateDefaultRate(value: unknown, props: any, _: any) {
   try {
@@ -89,6 +93,16 @@ function validateDefaultRate(value: unknown, props: any, _: any) {
 }
 
 class RateWidget extends BaseWidget<RateWidgetProps, WidgetState> {
+  static getAutocompleteDefinitions(): AutocompletionDefinitions {
+    return {
+      "!doc": "Rating widget is used to display ratings in your app.",
+      "!url": "https://docs.appsmith.com/widget-reference/rate",
+      isVisible: DefaultAutocompleteDefinitions.isVisible,
+      value: "number",
+      maxCount: "number",
+    };
+  }
+
   static getPropertyPaneContentConfig() {
     return [
       {
@@ -97,7 +111,7 @@ class RateWidget extends BaseWidget<RateWidgetProps, WidgetState> {
           {
             propertyName: "maxCount",
             helpText: "Sets the maximum allowed rating",
-            label: "Max Rating",
+            label: "Max rating",
             controlType: "INPUT_TEXT",
             placeholderText: "5",
             isBindProperty: true,
@@ -110,7 +124,7 @@ class RateWidget extends BaseWidget<RateWidgetProps, WidgetState> {
           {
             propertyName: "defaultRate",
             helpText: "Sets the default rating",
-            label: "Default Rating",
+            label: "Default rating",
             controlType: "INPUT_TEXT",
             placeholderText: "2.5",
             isBindProperty: true,
@@ -149,7 +163,7 @@ class RateWidget extends BaseWidget<RateWidgetProps, WidgetState> {
           {
             propertyName: "isAllowHalf",
             helpText: "Controls if user can submit half stars",
-            label: "Allow Half Stars",
+            label: "Allow half stars",
             controlType: "SWITCH",
             isJSConvertible: true,
             isBindProperty: true,
@@ -188,7 +202,7 @@ class RateWidget extends BaseWidget<RateWidgetProps, WidgetState> {
           },
           {
             propertyName: "animateLoading",
-            label: "Animate Loading",
+            label: "Animate loading",
             controlType: "SWITCH",
             helpText: "Controls the loading of the widget",
             defaultValue: true,
@@ -199,12 +213,11 @@ class RateWidget extends BaseWidget<RateWidgetProps, WidgetState> {
           },
         ],
       },
-      ...getResponsiveLayoutConfig(this.getWidgetType()),
       {
         sectionName: "Events",
         children: [
           {
-            helpText: "Triggers an action when the rate is changed",
+            helpText: "when the rate is changed",
             propertyName: "onRateChanged",
             label: "onChange",
             controlType: "ACTION_SELECTOR",
@@ -224,10 +237,12 @@ class RateWidget extends BaseWidget<RateWidgetProps, WidgetState> {
         children: [
           {
             propertyName: "size",
-            label: "Star Size",
+            label: "Star size",
             helpText: "Controls the size of the stars in the widget",
             controlType: "ICON_TABS",
+            defaultValue: "LARGE",
             fullWidth: true,
+            hidden: isAutoLayout,
             options: [
               {
                 label: "Small",
@@ -252,7 +267,7 @@ class RateWidget extends BaseWidget<RateWidgetProps, WidgetState> {
         children: [
           {
             propertyName: "activeColor",
-            label: "Active Color",
+            label: "Active color",
             helpText: "Color of the selected stars",
             controlType: "COLOR_PICKER",
             isJSConvertible: true,
@@ -262,7 +277,7 @@ class RateWidget extends BaseWidget<RateWidgetProps, WidgetState> {
           },
           {
             propertyName: "inactiveColor",
-            label: "Inactive Color",
+            label: "Inactive color",
             helpText: "Color of the unselected stars",
             controlType: "COLOR_PICKER",
             isJSConvertible: true,
@@ -309,6 +324,26 @@ class RateWidget extends BaseWidget<RateWidgetProps, WidgetState> {
     });
   };
 
+  static getSetterConfig(): SetterConfig {
+    return {
+      __setters: {
+        setVisibility: {
+          path: "isVisible",
+          type: "boolean",
+        },
+        setDisabled: {
+          path: "isDisabled",
+          type: "boolean",
+        },
+        setValue: {
+          path: "defaultRate",
+          type: "number",
+          accessor: "value",
+        },
+      },
+    };
+  }
+
   getPageView() {
     return (
       (this.props.rate || this.props.rate === 0) && (
@@ -322,6 +357,7 @@ class RateWidget extends BaseWidget<RateWidgetProps, WidgetState> {
           key={this.props.widgetId}
           leftColumn={this.props.leftColumn}
           maxCount={this.props.maxCount}
+          minHeight={this.props.minHeight}
           onValueChanged={this.valueChangedHandler}
           readonly={this.props.isReadOnly}
           rightColumn={this.props.rightColumn}

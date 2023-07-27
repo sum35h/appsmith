@@ -1,10 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import {
-  ValidationTypes,
-  ValidationResponse,
-  Validator,
-} from "constants/WidgetValidation";
+import type { ValidationResponse, Validator } from "constants/WidgetValidation";
+import { ValidationTypes } from "constants/WidgetValidation";
 import _, {
   compact,
   get,
@@ -15,12 +12,10 @@ import _, {
   isString,
   toString,
   uniq,
-  __,
 } from "lodash";
 
 import moment from "moment";
-import { ValidationConfig } from "constants/PropertyControlConstants";
-import evaluate from "./evaluate";
+import type { ValidationConfig } from "constants/PropertyControlConstants";
 
 import getIsSafeURL from "utils/validation/getIsSafeURL";
 import * as log from "loglevel";
@@ -128,6 +123,7 @@ function validateArray(
   // Keys whose values are supposed to be unique across all values in all objects in the array
   let uniqueKeys: Array<string> = [];
   const allowedKeyConfigs = config.params?.children?.params?.allowedKeys;
+
   if (
     config.params?.children?.type === ValidationTypes.OBJECT &&
     Array.isArray(allowedKeyConfigs) &&
@@ -731,10 +727,12 @@ export const VALIDATORS: Record<ValidationTypes, Validator> = {
     }
     const isABoolean = value === true || value === false;
     const isStringTrueFalse = value === "true" || value === "false";
-    const isValid = isABoolean || isStringTrueFalse;
+    // if strictCheck is true then stringTrueFalse are considered invalid value.
+    const strictCheck = config.params && config.params.strict;
+    const isValid = strictCheck ? isABoolean : isABoolean || isStringTrueFalse;
 
     let parsed = value;
-    if (isStringTrueFalse) parsed = value !== "false";
+    if (isStringTrueFalse && !strictCheck) parsed = value !== "false";
 
     if (!isValid) {
       return {
@@ -1093,14 +1091,19 @@ export const VALIDATORS: Record<ValidationTypes, Validator> = {
     };
     if (config.params?.fnString && isString(config.params?.fnString)) {
       try {
-        const { result } = evaluate(
-          config.params.fnString,
-          {},
-          {},
-          false,
-          undefined,
-          [value, props, _, moment, propertyPath, config],
-        );
+        const fnBody = `const fn = ${config.params?.fnString};
+        return fn(value, props, _, moment, propertyPath, config);`;
+
+        const result = new Function(
+          "value",
+          "props",
+          "_",
+          "moment",
+          "propertyPath",
+          "config",
+          fnBody,
+        )(value, props, globalThis._, globalThis.moment, propertyPath, config);
+
         return result;
       } catch (e) {
         log.error("Validation function error: ", { e });
@@ -1125,9 +1128,11 @@ export const VALIDATORS: Record<ValidationTypes, Validator> = {
         },
       ],
     };
-    const base64Regex = /^(?:[A-Za-z\d+\/]{4})*?(?:[A-Za-z\d+\/]{2}(?:==)?|[A-Za-z\d+\/]{3}=?)?$/;
+    const base64Regex =
+      /^(?:[A-Za-z\d+\/]{4})*?(?:[A-Za-z\d+\/]{2}(?:==)?|[A-Za-z\d+\/]{3}=?)?$/;
     const base64ImageRegex = /^data:image\/.*;base64/;
-    const imageUrlRegex = /(http(s?):)([/|.|\w|\s|-])*\.(?:jpeg|jpg|gif|png)??(?:&?[^=&]*=[^=&]*)*/;
+    const imageUrlRegex =
+      /(http(s?)?:\/\/(localhost|([/|.|\w|\s|-])*\.(?:jpeg|jpg|gif|png)??(?:&?[^=&]*=[^=&]*)*))/;
     if (
       value === undefined ||
       value === null ||
@@ -1242,5 +1247,48 @@ export const VALIDATORS: Record<ValidationTypes, Validator> = {
       isValid: true,
       parsed: resultValue,
     };
+  },
+  [ValidationTypes.UNION]: (
+    config: ValidationConfig,
+    value: unknown,
+    props: Record<string, unknown>,
+    propertyPath: string,
+  ): ValidationResponse => {
+    if (config.params?.types && config.params?.types.length > 0) {
+      for (const childConfig of config.params.types) {
+        const result = VALIDATORS[childConfig.type](
+          childConfig,
+          value,
+          props,
+          propertyPath,
+        );
+
+        if (result.isValid) {
+          return result;
+        }
+      }
+
+      return {
+        isValid: false,
+        parsed: config.params.defaultValue,
+        messages: [
+          {
+            name: "ValidationError",
+            message: config.params.defaultErrorMessage || "",
+          },
+        ],
+      };
+    } else {
+      return {
+        isValid: false,
+        parsed: undefined,
+        messages: [
+          {
+            name: "ValidationError",
+            message: "Invalid validation configuration",
+          },
+        ],
+      };
+    }
   },
 };

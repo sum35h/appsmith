@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 
 export type Header = {
   heading: string;
@@ -25,6 +25,7 @@ export type Footer = {
   onClick: ((event: React.MouseEvent<HTMLElement>) => void) | undefined;
   message: string;
   showHeading?: boolean;
+  isEnterprise?: boolean;
 };
 export type UpgradePageProps = {
   header: Header;

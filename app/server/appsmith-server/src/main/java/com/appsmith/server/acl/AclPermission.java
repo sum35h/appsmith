@@ -3,8 +3,11 @@ package com.appsmith.server.acl;
 import com.appsmith.external.models.BaseDomain;
 import com.appsmith.external.models.Datasource;
 import com.appsmith.server.domains.Action;
+import com.appsmith.server.domains.ActionCollection;
 import com.appsmith.server.domains.Application;
 import com.appsmith.server.domains.Config;
+import com.appsmith.server.domains.NewAction;
+import com.appsmith.server.domains.NewPage;
 import com.appsmith.server.domains.Page;
 import com.appsmith.server.domains.PermissionGroup;
 import com.appsmith.server.domains.Tenant;
@@ -29,7 +32,7 @@ public enum AclPermission {
     // Does the user have manage workspace permission
     @Deprecated
     USER_MANAGE_WORKSPACES("manage:userWorkspace", User.class),
-    //Does the user have read workspace permissions
+    // Does the user have read workspace permissions
     @Deprecated
     USER_READ_WORKSPACES("read:userWorkspace", User.class),
 
@@ -117,7 +120,6 @@ public enum AclPermission {
     MANAGE_TENANT("manage:tenants", Tenant.class),
     ;
 
-
     private final String value;
     private final Class<? extends BaseDomain> entity;
 
@@ -133,5 +135,22 @@ public enum AclPermission {
             }
         }
         return null;
+    }
+
+    public static boolean isPermissionForEntity(AclPermission aclPermission, Class clazz) {
+        Class entityClass = clazz;
+        /*
+         * Action class has been deprecated, and we have started using NewAction class instead.
+         * Page class has been deprecated, and we have started using NewPage class instead.
+         * NewAction and ActionCollection are similar entities w.r.t. AclPermissions.
+         * Hence, whenever we want to check for any Permission w.r.t. NewAction or Action Collection, we use Action, and
+         * whenever we want to check for any Permission w.r.t. NewPage, we use Page.
+         */
+        if (entityClass.equals(NewAction.class) || entityClass.equals(ActionCollection.class)) {
+            entityClass = Action.class;
+        } else if (entityClass.equals(NewPage.class)) {
+            entityClass = Page.class;
+        }
+        return aclPermission.getEntity().equals(entityClass);
     }
 }

@@ -1,8 +1,8 @@
 import { createReducer } from "utils/ReducerUtils";
-import { JSAction, JSCollection } from "entities/JSCollection";
+import type { JSAction, JSCollection } from "entities/JSCollection";
+import type { ReduxAction } from "@appsmith/constants/ReduxActionConstants";
 import {
   ReduxActionTypes,
-  ReduxAction,
   ReduxActionErrorTypes,
 } from "@appsmith/constants/ReduxActionConstants";
 import { set, keyBy, findIndex, unset } from "lodash";
@@ -110,6 +110,18 @@ const jsActionsReducer = createReducer(initialState, {
           ...a,
           isLoading: false,
           config: action.payload.data,
+        };
+      return a;
+    }),
+  [ReduxActionTypes.UPDATE_JS_ACTION_BODY_INIT]: (
+    state: JSCollectionDataState,
+    action: ReduxAction<{ id: string; body: string }>,
+  ): JSCollectionDataState =>
+    state.map((a) => {
+      if (a.config.id === action.payload.id)
+        return {
+          ...a,
+          config: { ...a.config, body: action.payload.body },
         };
       return a;
     }),

@@ -3,14 +3,16 @@ import {
   customJSLibraryMessages,
 } from "@appsmith/constants/messages";
 import difference from "lodash/difference";
-import { Def } from "tern";
+import type { Def } from "tern";
+import { invalidEntityIdentifiers } from "workers/common/DependencyMap/utils";
 import {
   JSLibraries,
   libraryReservedIdentifiers,
-  resetJSLibraries,
 } from "../../common/JSLibrary";
+import { resetJSLibraries } from "../../common/JSLibrary/resetJSLibraries";
 import { makeTernDefs } from "../../common/JSLibrary/ternDefinitionGenerator";
-import { EvalWorkerSyncRequest } from "../types";
+import type { EvalWorkerSyncRequest } from "../types";
+import { dataTreeEvaluator } from "./evalTree";
 
 enum LibraryInstallError {
   NameCollisionError,
@@ -55,10 +57,40 @@ class LibraryOverrideError extends Error {
   }
 }
 
+const removeDataTreeFromContext = () => {
+  if (!dataTreeEvaluator) return {};
+  const evalTree = dataTreeEvaluator?.getEvalTree();
+  const dataTreeEntityNames = Object.keys(evalTree);
+  const tempDataTreeStore: Record<string, any> = {};
+  for (const entityName of dataTreeEntityNames) {
+    // @ts-expect-error: self is a global variable
+    tempDataTreeStore[entityName] = self[entityName];
+    // @ts-expect-error: self is a global variable
+    delete self[entityName];
+  }
+  return tempDataTreeStore;
+};
+
+function addTempStoredDataTreeToContext(
+  tempDataTreeStore: Record<string, any>,
+) {
+  const dataTreeEntityNames = Object.keys(tempDataTreeStore);
+  for (const entityName of dataTreeEntityNames) {
+    // @ts-expect-error: self is a global variable
+    self[entityName] = tempDataTreeStore[entityName];
+  }
+}
+
 export function installLibrary(request: EvalWorkerSyncRequest) {
   const { data } = request;
   const { takenAccessors, takenNamesMap, url } = data;
   const defs: Def = {};
+  /**
+   * We need to remove the data tree from the global scope before importing the library.
+   * This is because the library might have a variable with the same name as a data tree entity. If that happens, the data tree entity will be overridden by the library variable.
+   * We store the data tree in a temporary variable and add it back to the global scope after the library is imported.
+   */
+  const tempDataTreeStore = removeDataTreeFromContext();
   try {
     const currentEnvKeys = Object.keys(self);
 
@@ -78,9 +110,12 @@ export function installLibrary(request: EvalWorkerSyncRequest) {
     }
 
     // Find keys add that were installed to the global scope.
-    const accessor = difference(Object.keys(self), currentEnvKeys) as Array<
-      string
-    >;
+    const accessor = difference(
+      Object.keys(self),
+      currentEnvKeys,
+    ) as Array<string>;
+
+    addTempStoredDataTreeToContext(tempDataTreeStore);
 
     checkForNameCollision(accessor, takenNamesMap);
 
@@ -111,7 +146,9 @@ export function installLibrary(request: EvalWorkerSyncRequest) {
 
     //Reserve accessor names.
     for (const acc of accessor) {
+      //we have to update invalidEntityIdentifiers as well
       libraryReservedIdentifiers[acc] = true;
+      invalidEntityIdentifiers[acc] = true;
     }
 
     return { success: true, defs, accessor };
@@ -131,7 +168,9 @@ export function uninstallLibrary(request: EvalWorkerSyncRequest) {
         //@ts-expect-error ignore
         self[key] = undefined;
       }
+      //we have to update invalidEntityIdentifiers as well
       delete libraryReservedIdentifiers[key];
+      delete invalidEntityIdentifiers[key];
     }
     return { success: true };
   } catch (e) {
@@ -155,7 +194,9 @@ export function loadLibraries(request: EvalWorkerSyncRequest) {
   const keysAfter = Object.keys(self);
   const newKeys = difference(keysAfter, keysBefore);
   for (const key of newKeys) {
+    //we have to update invalidEntityIdentifiers as well
     libraryReservedIdentifiers[key] = true;
+    invalidEntityIdentifiers[key] = true;
   }
   JSLibraries.push(...data);
   return { success: !message, message };

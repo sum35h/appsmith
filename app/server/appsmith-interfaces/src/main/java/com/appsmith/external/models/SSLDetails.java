@@ -19,21 +19,30 @@ public class SSLDetails implements AppsmithDomain {
 
     public enum AuthType {
         // Default driver configurations
-        DEFAULT, NO_SSL,
+        DEFAULT,
+        NO_SSL,
 
-        //For those drivers that don't have any specific options
+        // For those drivers that don't have any specific options
         ENABLED,
 
         // Following for Mysql/Postgres Connections.
-        ALLOW, PREFER, REQUIRE, DISABLE, VERIFY_CA, VERIFY_FULL,
+        ALLOW,
+        PREFER,
+        REQUIRE,
+        DISABLE,
+        VERIFY_CA,
+        VERIFY_FULL,
 
         // For MySql Connections
-        PREFERRED, REQUIRED, DISABLED,
+        PREFERRED,
+        REQUIRED,
+        DISABLED,
 
         // Following for MongoDB Connections.
-        CA_CERTIFICATE, SELF_SIGNED_CERTIFICATE,
+        CA_CERTIFICATE,
+        SELF_SIGNED_CERTIFICATE,
 
-        // For MsSQL connections
+        // For MsSQL, Oracle DB Connections
         NO_VERIFY
     }
 
@@ -61,5 +70,4 @@ public class SSLDetails implements AppsmithDomain {
     Boolean usePemCertificate;
 
     PEMCertificate pemCertificate;
-
 }

@@ -1,11 +1,76 @@
-import { DataTree } from "entities/DataTree/dataTreeFactory";
-import { CanvasWidgetsReduxState } from "reducers/entityReducers/canvasWidgetsReducer";
-import { MetaWidgetsReduxState } from "reducers/entityReducers/metaWidgetsReducer";
-import { buildChildWidgetTree } from "./widgetRenderUtils";
+import type {
+  DataTree,
+  WidgetEntity,
+  WidgetEntityConfig,
+} from "entities/DataTree/dataTreeFactory";
+import type { CanvasWidgetsReduxState } from "reducers/entityReducers/canvasWidgetsReducer";
+import type { MetaWidgetsReduxState } from "reducers/entityReducers/metaWidgetsReducer";
+import { buildChildWidgetTree, createCanvasWidget } from "./widgetRenderUtils";
+import type { FlattenedWidgetProps } from "widgets/constants";
+
+describe("createCanvasWidget functionality", () => {
+  it("returns an empty errors if no evaluations are present", function () {
+    const canvasWidget = {} as unknown as FlattenedWidgetProps;
+    const dataTree = {} as unknown as WidgetEntity;
+
+    const response = createCanvasWidget(
+      canvasWidget,
+      dataTree,
+      {} as WidgetEntityConfig,
+    );
+    expect(response.errors.length).toEqual(0);
+  });
+
+  it("returns an empty errors if no evaluation errors are present", () => {
+    const canvasWidget = {} as unknown as FlattenedWidgetProps;
+    const dataTree = {
+      __evaluation__: {},
+    } as unknown as WidgetEntity;
+
+    const response = createCanvasWidget(
+      canvasWidget,
+      dataTree,
+      {} as WidgetEntityConfig,
+    );
+    expect(response.errors.length).toEqual(0);
+  });
+
+  it("populates __evaluation__ errors inside widget error property", () => {
+    const canvasWidget = {} as unknown as FlattenedWidgetProps;
+
+    const dataTree = {
+      __evaluation__: {
+        errors: {
+          propertyPath: [
+            {
+              errorMessage: {
+                name: "Validation Error",
+                message: "Error Message",
+              },
+              raw: "Error Message Stack",
+            },
+          ],
+        },
+      },
+    } as unknown as WidgetEntity;
+
+    const response = createCanvasWidget(
+      canvasWidget,
+      dataTree,
+      {} as WidgetEntityConfig,
+    );
+    expect(response.errors.length).toEqual(1);
+    expect(response.errors[0].name).toStrictEqual("Validation Error");
+    expect(response.errors[0].message).toStrictEqual("Error Message");
+    expect(response.errors[0].stack).toStrictEqual("Error Message Stack");
+    expect(response.errors[0].type).toStrictEqual("property");
+    expect(response.errors[0].path).toStrictEqual("propertyPath");
+  });
+});
 
 describe("test EditorUtils methods", () => {
   describe("should test buildChildWidgetTree method", () => {
-    const metaWidgets = ({
+    const metaWidgets = {
       "1_meta": {
         children: ["2_meta"],
         type: "CANVAS",
@@ -24,8 +89,8 @@ describe("test EditorUtils methods", () => {
         bottomRow: 10,
         widgetName: "meta_two",
       },
-    } as unknown) as MetaWidgetsReduxState;
-    const canvasWidgets = ({
+    } as unknown as MetaWidgetsReduxState;
+    const canvasWidgets = {
       "1": {
         children: ["2"],
         type: "FORM_WIDGET",
@@ -62,9 +127,9 @@ describe("test EditorUtils methods", () => {
         bottomRow: 18,
         widgetName: "four",
       },
-    } as unknown) as CanvasWidgetsReduxState;
+    } as unknown as CanvasWidgetsReduxState;
 
-    const dataTree = ({
+    const dataTree = {
       one: {
         children: ["2"],
         type: "FORM_WIDGET",
@@ -140,7 +205,7 @@ describe("test EditorUtils methods", () => {
         isDirty: true,
         isValid: true,
       },
-    } as unknown) as DataTree;
+    } as unknown as DataTree;
 
     it("should return a complete childwidgets Tree", () => {
       const childWidgetTree = [
@@ -157,6 +222,7 @@ describe("test EditorUtils methods", () => {
           value: "test",
           widgetId: "3",
           widgetName: "three",
+          errors: [],
         },
         {
           bottomRow: 18,
@@ -171,6 +237,7 @@ describe("test EditorUtils methods", () => {
           value: "test",
           widgetId: "4",
           widgetName: "four",
+          errors: [],
         },
         {
           type: "CANVAS",
@@ -181,6 +248,7 @@ describe("test EditorUtils methods", () => {
           bottomRow: 100,
           widgetName: "meta_one",
           skipForFormWidget: "test",
+          errors: [],
           children: [
             {
               isDirty: true,
@@ -195,6 +263,7 @@ describe("test EditorUtils methods", () => {
               bottomRow: 10,
               widgetName: "meta_two",
               skipForFormWidget: "test",
+              errors: [],
             },
           ],
         },
@@ -206,6 +275,7 @@ describe("test EditorUtils methods", () => {
           metaWidgets,
           dataTree,
           new Set<string>("one"),
+          {},
           "2",
         ),
       ).toEqual(childWidgetTree);
@@ -228,6 +298,7 @@ describe("test EditorUtils methods", () => {
               value: "test",
               widgetId: "3",
               widgetName: "three",
+              errors: [],
             },
             {
               bottomRow: 18,
@@ -241,6 +312,7 @@ describe("test EditorUtils methods", () => {
               value: "test",
               widgetId: "4",
               widgetName: "four",
+              errors: [],
             },
             {
               isLoading: false,
@@ -250,6 +322,7 @@ describe("test EditorUtils methods", () => {
               widgetId: "1_meta",
               bottomRow: 100,
               widgetName: "meta_one",
+              errors: [],
               children: [
                 {
                   isDirty: true,
@@ -263,6 +336,7 @@ describe("test EditorUtils methods", () => {
                   topRow: 0,
                   bottomRow: 10,
                   widgetName: "meta_two",
+                  errors: [],
                 },
               ],
             },
@@ -276,6 +350,7 @@ describe("test EditorUtils methods", () => {
           value: "test",
           widgetId: "2",
           widgetName: "two",
+          errors: [],
         },
       ];
 
@@ -285,6 +360,7 @@ describe("test EditorUtils methods", () => {
           metaWidgets,
           dataTree,
           new Set<string>("two"),
+          {},
           "1",
         ),
       ).toEqual(childWidgetTree);
@@ -401,6 +477,7 @@ describe("test EditorUtils methods", () => {
           metaWidgets,
           {},
           new Set<string>("one"),
+          {},
           "1",
         ),
       ).toEqual(childWidgetTree);
